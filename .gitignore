@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+civic.db
+uploads/*
+!uploads/.gitkeep

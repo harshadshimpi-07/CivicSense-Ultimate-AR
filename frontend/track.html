@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08111f">
+  <title>CivicSense | Track Complaint</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><div class="brand-mark">CS</div><div><h1>CivicSense</h1><p>Citizen Tracking Portal</p></div></a>
+  <nav><a href="/">Report</a><a href="/ar">AR Scan</a><a class="active" href="/track">Track</a><a href="/admin">Municipality</a><a href="/dataset">Data Lab</a></nav>
+</header>
+
+<main class="container track-container">
+  <section class="track-hero">
+    <div><span class="badge">Transparent Progress</span><h2>Know exactly what is happening with your report.</h2><p>Enter your complaint ID to view status, assigned department, map location, authority notes and full activity history.</p></div>
+    <div class="track-search-card">
+      <label>Complaint ID</label>
+      <div class="track-search"><span>#</span><input type="number" min="1" id="complaintId" placeholder="e.g. 12"><button class="primary" onclick="trackComplaint()">Track Report</button></div>
+      <small>Example: if your receipt says Complaint #12, enter 12.</small>
+    </div>
+  </section>
+
+  <div class="tracking-status-row"><span id="liveIndicator" class="live-indicator hidden"><i></i> Auto-refresh every 10 sec</span></div>
+  <section id="trackResult"></section>
+</main>
+
+<footer><strong>CivicSense</strong> · Citizen complaint tracking</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/track.js"></script>
+</body>
+</html>

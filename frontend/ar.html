@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07111f">
+  <title>CivicSense | AR Civic Scan</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><div class="brand-mark">CS</div><div><h1>CivicSense</h1><p>AR Civic Scan Lab</p></div></a>
+  <nav><a href="/">Report</a><a class="active" href="/ar">AR Scan</a><a href="/track">Track</a><a href="/admin">Municipality</a><a href="/dataset">Data Lab</a></nav>
+</header>
+<main class="container wide">
+  <section class="dashboard-hero ar-hero">
+    <div><span class="badge">Advanced Prototype · AR Mode</span><h2>Scan the street. Lock the location. Report instantly.</h2><p>This browser-based AR prototype overlays civic reporting controls on the live camera, captures evidence, records GPS and submits into the same municipal workflow.</p></div>
+    <div class="ar-status-stack"><span id="cameraState" class="signal-pill">Camera offline</span><span id="gpsState" class="signal-pill">GPS waiting</span><span id="headingState" class="signal-pill">Heading --°</span></div>
+  </section>
+
+  <section class="ar-grid">
+    <div class="card ar-stage-card">
+      <div class="section-heading"><div><span class="eyebrow">Live Field Capture</span><h3>AR Issue Scanner</h3><p>Allow camera and location access. Point the crosshair at the civic issue and capture evidence.</p></div><button class="secondary" id="startCameraBtn">Start Camera</button></div>
+      <div class="ar-viewport" id="arViewport">
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <canvas id="captureCanvas" class="hidden"></canvas>
+        <div class="ar-gridlines"></div>
+        <div class="ar-crosshair"><span></span><i></i></div>
+        <div class="ar-hud top-left"><b>CIVICSENSE AR</b><small id="hudCategory">Awaiting category</small></div>
+        <div class="ar-hud top-right"><b id="hudHeading">--°</b><small>device heading</small></div>
+        <div class="ar-hud bottom-left"><b id="hudCoords">GPS not locked</b><small>evidence geotag</small></div>
+        <div class="ar-scan-line"></div>
+      </div>
+      <div class="ar-controls"><button class="primary" id="captureBtn" disabled>◎ Capture Evidence</button><button class="secondary" id="retakeBtn" disabled>Retake</button><label class="secondary file-fallback">Upload Instead<input id="fallbackImage" type="file" accept="image/*" capture="environment"></label></div>
+      <div id="capturePreviewWrap" class="ar-preview hidden"><img id="capturePreview" alt="Captured civic evidence"><span>Evidence locked ✓</span></div>
+    </div>
+
+    <div class="card ar-form-card">
+      <div class="section-heading"><div><span class="eyebrow">Incident Metadata</span><h3>Create AR Report</h3><p>Complete the details and submit the captured evidence.</p></div></div>
+      <form id="arIssueForm">
+        <div class="grid-2"><label>Your Name<input name="reporter_name" required placeholder="Citizen name"></label><label>Email<input name="reporter_email" type="email" required placeholder="name@example.com"></label></div>
+        <div class="grid-2"><label>Mobile <span class="optional">Optional</span><input name="reporter_phone" type="tel" placeholder="Mobile number"></label><label>Issue Type<select id="arCategory" name="category" required><option value="">Select issue</option><option>Pothole</option><option>Garbage</option><option>Drainage</option><option>Street Light</option><option>Water Leakage</option><option>Illegal Dumping</option><option>Damaged Footpath</option><option>Other</option></select></label></div>
+        <label>Description<textarea name="description" minlength="8" rows="4" required placeholder="What is the issue and why is it unsafe?"></textarea></label>
+        <label>Landmark / Location Name<input name="location_label" id="arLocationLabel" placeholder="e.g. Near college gate / bus stop"></label>
+        <input type="hidden" name="latitude" id="arLatitude"><input type="hidden" name="longitude" id="arLongitude"><input type="hidden" name="source" value="AR Camera">
+        <div class="mini-map-shell"><div id="arMap" class="map ar-map"></div><div class="map-tip">GPS pin · drag to refine exact location</div></div>
+        <div class="coordinate-strip"><div><span>AR geotag</span><strong id="arLocationText">No location locked</strong></div><button type="button" class="secondary compact-button" id="arGpsBtn">Use My GPS</button></div>
+        <button class="primary submit-primary full-width" id="arSubmitBtn" type="submit">Submit AR Civic Report →</button>
+      </form>
+      <div id="arMessage"></div>
+    </div>
+  </section>
+</main>
+<footer><strong>CivicSense</strong> · AR-assisted civic reporting prototype · Camera and GPS work best on localhost/HTTPS</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/ar.js"></script>
+</body>
+</html>

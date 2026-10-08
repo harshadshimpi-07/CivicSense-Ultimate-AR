@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08111f">
+  <title>CivicSense | Smart Civic Reporting</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="CivicSense home">
+      <div class="brand-mark">CS</div>
+      <div><h1>CivicSense</h1><p>Smart City Response Platform</p></div>
+    </a>
+    <nav>
+      <a class="active" href="/">Report</a>
+      <a href="/ar">AR Scan</a>
+      <a href="/track">Track</a>
+      <a href="/admin">Municipality</a>
+      <a href="/dataset">Data Lab</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero hero-report">
+      <div class="hero-copy">
+        <span class="badge">Citizen Action Portal</span>
+        <h2>Turn a street problem into a <span>trackable civic action.</span></h2>
+        <p>Capture evidence, pin the exact location on the map and send the complaint directly to the correct municipal department.</p>
+        <div class="hero-points">
+          <span>📷 Photo evidence</span><span>📍 Map pinning</span><span>🧠 Duplicate control</span><span>🛰 Live tracking</span>
+        </div>
+        <div class="hero-cta-row"><a class="primary button-anchor" href="/ar">Launch AR Civic Scan →</a><a class="secondary button-anchor" href="/dataset">Explore 82K-record Data Lab</a></div>
+      </div>
+      <div class="hero-panel">
+        <div class="signal"><span></span> System online</div>
+        <strong>3-step smart reporting</strong>
+        <div class="hero-step"><b>01</b><div><span>Evidence</span><small>Add photo and description</small></div></div>
+        <div class="hero-step"><b>02</b><div><span>Location</span><small>Click or drag the map pin</small></div></div>
+        <div class="hero-step"><b>03</b><div><span>Track</span><small>Receive complaint ID instantly</small></div></div>
+      </div>
+    </section>
+
+    <section class="portal-layout">
+      <div class="card form-card">
+        <div class="section-heading">
+          <div><span class="eyebrow">Step 1 · Report Details</span><h3>Create a Civic Report</h3><p>Tell the authority what happened and attach clear visual evidence.</p></div>
+          <span class="secure-label">🔒 Prototype Demo</span>
+        </div>
+
+        <form id="issueForm">
+          <div class="grid-2">
+            <label>Your Name<input type="text" name="reporter_name" placeholder="e.g. Samarth Shimpi" autocomplete="name" required></label>
+            <label>Email / User ID<input type="email" name="reporter_email" placeholder="name@example.com" autocomplete="email" required></label>
+          </div>
+
+          <div class="grid-2">
+            <label>Mobile Number <span class="optional">Optional</span><input type="tel" name="reporter_phone" placeholder="10-digit number" autocomplete="tel"></label>
+            <label>Issue Type
+              <select name="category" required>
+                <option value="">Select issue category</option>
+                <option>Pothole</option><option>Garbage</option><option>Drainage</option>
+                <option>Street Light</option><option>Water Leakage</option><option>Illegal Dumping</option>
+                <option>Damaged Footpath</option><option>Other</option>
+              </select>
+            </label>
+          </div>
+
+          <label>Description<textarea name="description" rows="4" minlength="8" required placeholder="Describe the problem, risk and nearby landmark..."></textarea></label>
+
+          <div class="upload-zone">
+            <div class="upload-copy"><span class="upload-icon">📸</span><div><strong>Photo Evidence</strong><p>Upload a clear image of the civic issue. JPG, PNG or WEBP up to 8 MB.</p></div></div>
+            <label class="file-button">Choose / Capture Photo<input type="file" id="imageInput" name="image" accept="image/*" capture="environment" required></label>
+            <div id="previewWrap" class="preview-wrap hidden"><img id="imagePreview" alt="Selected issue preview"><button type="button" class="preview-remove" id="removeImageBtn">Remove</button></div>
+          </div>
+
+          <div class="location-section">
+            <div class="section-heading compact-heading">
+              <div><span class="eyebrow">Step 2 · Exact Location</span><h3>Pin the Problem on the Map</h3><p>Use your GPS or click anywhere on the map. You can drag the marker for exact placement.</p></div>
+              <button type="button" class="secondary" id="locationBtn">◎ Use My Location</button>
+            </div>
+            <div class="map-shell">
+              <div id="reportMap" class="map map-report"></div>
+              <div class="map-tip">Click map to place pin · Drag marker to adjust</div>
+            </div>
+            <div class="coordinate-strip">
+              <div><span>Selected coordinates</span><strong id="locationText">No location selected</strong></div>
+              <span id="locationState" class="location-state">Waiting for pin</span>
+            </div>
+            <label>Landmark / Location Name <span class="optional">Recommended</span>
+              <input type="text" name="location_label" id="locationLabel" maxlength="180" placeholder="e.g. Near PCCOE main gate, Akurdi">
+            </label>
+          </div>
+
+          <input type="hidden" name="latitude" id="latitude">
+          <input type="hidden" name="longitude" id="longitude">
+          <input type="hidden" name="source" value="Citizen Web">
+
+          <div class="submission-panel">
+            <div><span class="eyebrow">Step 3 · Submit</span><p>Your report is checked for nearby duplicates before it is registered.</p></div>
+            <button type="submit" class="primary submit-primary" id="submitBtn">Submit Civic Report →</button>
+          </div>
+        </form>
+        <div id="message"></div>
+      </div>
+
+      <aside class="side-column">
+        <div class="card impact-card">
+          <span class="eyebrow">How CivicSense Works</span>
+          <h3>One report. Clear responsibility.</h3>
+          <div class="flow-list">
+            <div><span>01</span><p><b>Citizen reports</b><small>Photo + description + exact map pin</small></p></div>
+            <div><span>02</span><p><b>System validates</b><small>Duplicate check and department routing</small></p></div>
+            <div><span>03</span><p><b>Municipality acts</b><small>Assigns team, priority and progress notes</small></p></div>
+            <div><span>04</span><p><b>Citizen tracks</b><small>Live status timeline and downloadable PDF</small></p></div>
+          </div>
+        </div>
+        <div class="card trust-card">
+          <div class="trust-icon">✓</div>
+          <h4>Built for transparent civic response</h4>
+          <p>Every complaint receives an ID, a location, a department, a status history and a downloadable report.</p>
+          <a class="text-link" href="/track">Track an existing report →</a>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <footer><strong>CivicSense</strong> · Smart civic reporting and municipal response prototype</footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

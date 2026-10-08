@@ -1,0 +1,51 @@
+{
+  "name": "CivicSense Synthetic Civic Issue Dataset",
+  "version": "1.0",
+  "generated_for": "CivicSense Advanced Prototype",
+  "row_count": 82000,
+  "column_count": 27,
+  "file_name": "civicsense_large_dataset.csv",
+  "file_size_bytes": 51180274,
+  "status_counts": {
+    "Reported": 14844,
+    "Assigned": 11309,
+    "In Progress": 19016,
+    "Resolved": 36831
+  },
+  "category_counts": {
+    "Pothole": 10381,
+    "Garbage": 10421,
+    "Drainage": 10302,
+    "Street Light": 10210,
+    "Water Leakage": 10185,
+    "Illegal Dumping": 10197,
+    "Damaged Footpath": 10196,
+    "Other": 10108
+  },
+  "severity_counts": {
+    "Low": 14854,
+    "Medium": 40236,
+    "High": 21166,
+    "Critical": 5744
+  },
+  "ward_counts": {
+    "Akurdi": 5409,
+    "Nigdi": 5329,
+    "Ravet": 5551,
+    "Pimpri": 5372,
+    "Chinchwad": 5432,
+    "Bhosari": 5711,
+    "Wakad": 5478,
+    "Hinjawadi": 5457,
+    "Baner": 5502,
+    "Aundh": 5412,
+    "Shivajinagar": 5523,
+    "Kothrud": 5509,
+    "Hadapsar": 5449,
+    "Viman Nagar": 5418,
+    "Kharadi": 5448
+  },
+  "average_resolution_hours": 37.9,
+  "geography_note": "Synthetic coordinates are generated around Pune and Pimpri-Chinchwad demo zones; not real citizen records.",
+  "privacy_note": "100% synthetic demonstration/training data. No real names, emails, phone numbers, or complaint records are included."
+}

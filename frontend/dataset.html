@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#08111f"><title>CivicSense | Data Lab</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<header class="topbar"><a class="brand" href="/"><div class="brand-mark">CS</div><div><h1>CivicSense</h1><p>Urban Data Lab</p></div></a><nav><a href="/">Report</a><a href="/ar">AR Scan</a><a href="/track">Track</a><a href="/admin">Municipality</a><a class="active" href="/dataset">Data Lab</a></nav></header>
+<main class="container wide">
+  <section class="dashboard-hero data-hero"><div><span class="badge">Big Data Demonstration</span><h2>82,000 synthetic civic records for analytics and ML prototyping.</h2><p>No real citizen data is included. The dataset is bundled with the project so you can demonstrate scale, model-ready labels and urban analytics.</p></div><a class="primary button-anchor" href="/api/dataset/download">↓ Download Full CSV</a></section>
+  <section class="stats" id="datasetStats"></section>
+  <section class="data-lab-grid">
+    <div class="card"><div class="section-heading"><div><span class="eyebrow">Category Distribution</span><h3>Issue Mix</h3><p>Automatically calculated from the bundled dataset.</p></div></div><div id="categoryBars" class="bar-list"></div></div>
+    <div class="card"><div class="section-heading"><div><span class="eyebrow">Status Distribution</span><h3>Workflow Mix</h3><p>Reported, assigned, in-progress and resolved cases.</p></div></div><div id="statusBars" class="bar-list"></div></div>
+  </section>
+  <section class="card dataset-table-card"><div class="section-heading"><div><span class="eyebrow">Dataset Preview</span><h3>Sample Records</h3><p>First 12 rows from the large CSV bundled inside this ZIP.</p></div><span id="datasetMeta" class="secure-label">Loading…</span></div><div class="table-scroll"><table class="dataset-table"><thead><tr><th>Code</th><th>Ward</th><th>Issue</th><th>Severity</th><th>Status</th><th>Source</th><th>Confidence</th><th>Reported</th></tr></thead><tbody id="datasetRows"></tbody></table></div></section>
+  <section class="card trust-card data-note"><div class="trust-icon">AI</div><h4>Ready for ML experimentation</h4><p>Columns include issue label, severity, ward, coordinates, source, validation score, model confidence, road type, weather, cost estimate and resolution time. Use the included generator script to recreate or expand the dataset.</p></section>
+</main>
+<footer><strong>CivicSense</strong> · Synthetic dataset for educational prototype use only</footer>
+<script src="/static/dataset.js"></script>
+</body></html>

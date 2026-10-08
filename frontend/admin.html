@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08111f">
+  <title>CivicSense | Municipality Command Center</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><div class="brand-mark">CS</div><div><h1>CivicSense</h1><p>Municipality Command Center</p></div></a>
+  <nav><a href="/">Report</a><a href="/ar">AR Scan</a><a href="/track">Track</a><a class="active" href="/admin">Municipality</a><a href="/dataset">Data Lab</a></nav>
+</header>
+
+<main class="container wide">
+  <section class="dashboard-hero">
+    <div>
+      <span class="badge">Authority Operations</span>
+      <h2>City issue command center</h2>
+      <p>See every complaint geographically, prioritize urgent cases and maintain a transparent resolution trail.</p>
+    </div>
+    <div class="dashboard-actions">
+      <button class="secondary light" onclick="loadIssues()">↻ Refresh data</button>
+      <a class="secondary light button-anchor" href="/dataset">▦ Data Lab</a><a class="primary button-anchor" href="/api/issues/export.csv">↓ Export CSV</a>
+    </div>
+  </section>
+
+  <section class="stats" id="stats"></section>
+
+  <section class="admin-map-card card">
+    <div class="section-heading">
+      <div><span class="eyebrow">Geospatial Overview</span><h3>Complaint Map</h3><p id="mapSummary">Loading reported locations…</p></div>
+      <span class="map-legend"><i class="dot open"></i> Active <i class="dot resolved"></i> Resolved</span>
+    </div>
+    <div class="map-shell"><div id="adminMap" class="map map-admin"></div></div>
+  </section>
+
+  <section class="filter-bar">
+    <div class="filter-search">⌕<input id="searchBox" type="search" placeholder="Search ID, issue, citizen, landmark or department..." oninput="renderIssues()"></div>
+    <select id="statusFilter" onchange="renderIssues()"><option value="">All statuses</option><option>Reported</option><option>Assigned</option><option>In Progress</option><option>Resolved</option></select>
+    <select id="categoryFilter" onchange="renderIssues()"><option value="">All categories</option><option>Pothole</option><option>Garbage</option><option>Drainage</option><option>Street Light</option><option>Water Leakage</option><option>Illegal Dumping</option><option>Damaged Footpath</option><option>Other</option></select>
+  </section>
+
+  <section class="list-heading"><div><span class="eyebrow">Case Management</span><h3>Complaint Queue</h3></div><span id="resultCount" class="result-count"></span></section>
+  <section class="issues-grid" id="issuesGrid"></section>
+</main>
+
+<footer><strong>CivicSense</strong> · Municipality operations dashboard</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/admin.js"></script>
+</body>
+</html>
