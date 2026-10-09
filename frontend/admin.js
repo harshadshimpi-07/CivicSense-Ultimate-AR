@@ -18,7 +18,32 @@ function initAdminMap() {
   setTimeout(() => adminMap.invalidateSize(), 100);
 }
 
+async function checkDbStatus() {
+  const badge = document.getElementById("dbBadge");
+  if (!badge) return;
+  try {
+    const res = await fetch("/api/db/status");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.mode === "supabase" && data.supabase_connected) {
+        badge.innerHTML = "☁ Supabase Cloud Active";
+        badge.style.background = "rgba(45,212,191,0.2)";
+        badge.style.borderColor = "#2dd4bf";
+        badge.style.color = "#5eead4";
+      } else {
+        badge.innerHTML = "💾 Local SQLite (Supabase Ready)";
+        badge.style.background = "rgba(255,255,255,0.1)";
+        badge.style.borderColor = "rgba(255,255,255,0.2)";
+        badge.style.color = "#cbd5e1";
+      }
+    }
+  } catch (_) {
+    badge.textContent = "Offline";
+  }
+}
+
 async function loadIssues() {
+  checkDbStatus();
   const grid = document.getElementById("issuesGrid");
   grid.innerHTML = '<div class="card empty-state"><div class="loader"></div><p>Loading civic reports…</p></div>';
   try {

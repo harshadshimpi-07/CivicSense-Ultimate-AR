@@ -7,12 +7,11 @@ from datetime import datetime
 from io import BytesIO, StringIO
 import csv
 import math
-import sqlite3
 import textwrap
-import uuid
+
+import database
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "civic.db"
 UPLOAD_DIR = BASE_DIR / "uploads"
 FRONTEND_DIR = BASE_DIR / "frontend"
 MAX_IMAGE_SIZE = 8 * 1024 * 1024
@@ -35,72 +34,11 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 app = FastAPI(
     title="CivicSense - Smart Civic Issue Reporting",
     version="4.0.0",
-    description="Map + AR civic reporting, duplicate prevention, municipal workflow, big-data demo and citizen tracking.",
+    description="Map + AR civic reporting, Supabase cloud database support, duplicate prevention, municipal workflow, big-data demo and citizen tracking.",
 )
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
-
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
-
-
-def ensure_column(conn, table: str, column: str, definition: str):
-    columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
-    if column not in columns:
-        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-
-
-def init_db():
-    conn = get_db()
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS issues (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            reporter_name TEXT NOT NULL,
-            reporter_email TEXT NOT NULL,
-            reporter_phone TEXT DEFAULT '',
-            category TEXT NOT NULL,
-            description TEXT NOT NULL,
-            latitude REAL NOT NULL,
-            longitude REAL NOT NULL,
-            location_label TEXT DEFAULT '',
-            image_name TEXT NOT NULL,
-            department TEXT NOT NULL,
-            severity TEXT NOT NULL DEFAULT 'Medium',
-            status TEXT NOT NULL DEFAULT 'Reported',
-            assigned_to TEXT DEFAULT '',
-            authority_note TEXT DEFAULT '',
-            source TEXT NOT NULL DEFAULT 'Citizen Web',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )
-        """
-    )
-    # Migration for databases created by older CivicSense versions.
-    ensure_column(conn, "issues", "location_label", "TEXT DEFAULT ''")
-    ensure_column(conn, "issues", "source", "TEXT NOT NULL DEFAULT 'Citizen Web'")
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS status_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            issue_id INTEGER NOT NULL,
-            status TEXT NOT NULL,
-            note TEXT DEFAULT '',
-            changed_at TEXT NOT NULL,
-            FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE
-        )
-        """
-    )
-    conn.commit()
-    conn.close()
-
-
-init_db()
 
 
 def department_for(category: str) -> str:
@@ -132,36 +70,6 @@ def validate_coordinates(latitude: float, longitude: float):
         raise HTTPException(status_code=400, detail="Invalid map coordinates.")
 
 
-def row_to_dict(row):
-    return {
-        "id": row["id"],
-        "reporter_name": row["reporter_name"],
-        "reporter_email": row["reporter_email"],
-        "reporter_phone": row["reporter_phone"],
-        "category": row["category"],
-        "description": row["description"],
-        "latitude": row["latitude"],
-        "longitude": row["longitude"],
-        "location_label": row["location_label"] or "",
-        "image_url": f"/uploads/{row['image_name']}",
-        "department": row["department"],
-        "severity": row["severity"],
-        "status": row["status"],
-        "assigned_to": row["assigned_to"],
-        "authority_note": row["authority_note"],
-        "source": row["source"] if "source" in row.keys() else "Citizen Web",
-        "created_at": row["created_at"],
-        "updated_at": row["updated_at"],
-    }
-
-
-def get_issue_row(conn, issue_id: int):
-    row = conn.execute("SELECT * FROM issues WHERE id = ?", (issue_id,)).fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Complaint not found.")
-    return row
-
-
 @app.get("/")
 def home():
     return FileResponse(FRONTEND_DIR / "index.html")
@@ -189,7 +97,19 @@ def dataset_page():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "app": "CivicSense", "version": "4.0.0", "modules": ["map", "ar-camera", "tracking", "pdf", "csv", "dataset"]}
+    db_info = database.get_db_status()
+    return {
+        "status": "ok",
+        "app": "CivicSense",
+        "version": "4.0.0",
+        "database": db_info,
+        "modules": ["map", "ar-camera", "tracking", "pdf", "csv", "dataset", "supabase-cloud"],
+    }
+
+
+@app.get("/api/db/status")
+def db_status_endpoint():
+    return database.get_db_status()
 
 
 @app.post("/api/issues")
@@ -233,65 +153,57 @@ async def create_issue(
     if len(contents) > MAX_IMAGE_SIZE:
         raise HTTPException(status_code=400, detail="Image is too large. Maximum size is 8 MB.")
 
-    conn = get_db()
-
-    # Same citizen + same unresolved category within 60 m is treated as a repeat.
-    own_active = conn.execute(
-        "SELECT * FROM issues WHERE reporter_email = ? AND category = ? AND status != 'Resolved'",
-        (email, category),
-    ).fetchall()
+    # Duplicate check 1: Same citizen + same unresolved category within 60 m
+    own_active = database.get_own_active_issues(email, category)
     for issue in own_active:
         if haversine_meters(latitude, longitude, issue["latitude"], issue["longitude"]) <= 60:
-            conn.close()
             raise HTTPException(
                 status_code=409,
                 detail=f"Duplicate blocked. You already reported this issue nearby as Complaint #{issue['id']} and it is still {issue['status']}.",
             )
 
-    # Community duplicate at almost the same physical location.
-    nearby_active = conn.execute(
-        "SELECT * FROM issues WHERE category = ? AND status != 'Resolved' ORDER BY id DESC LIMIT 100",
-        (category,),
-    ).fetchall()
+    # Duplicate check 2: Community duplicate within 20 m
+    nearby_active = database.get_nearby_active_issues(category, limit=100)
     for issue in nearby_active:
         if haversine_meters(latitude, longitude, issue["latitude"], issue["longitude"]) <= 20:
-            conn.close()
             raise HTTPException(
                 status_code=409,
                 detail=f"A similar active complaint already exists here: Complaint #{issue['id']}. Please track that complaint instead.",
             )
 
-    suffix = Path(image.filename or "photo.jpg").suffix.lower()
-    if suffix not in [".jpg", ".jpeg", ".png", ".webp"]:
-        suffix = ".jpg"
-    image_name = f"{uuid.uuid4().hex}{suffix}"
-    (UPLOAD_DIR / image_name).write_bytes(contents)
+    # Upload evidence photo (Supabase Storage bucket or local uploads)
+    image_name, image_url = database.upload_evidence(
+        file_bytes=contents,
+        original_filename=image.filename or "photo.jpg",
+        content_type=image.content_type or "image/jpeg",
+    )
 
     now = datetime.now().isoformat(timespec="seconds")
     department = department_for(category)
-    cursor = conn.execute(
-        """
-        INSERT INTO issues (
-            reporter_name, reporter_email, reporter_phone, category, description,
-            latitude, longitude, location_label, image_name, department, severity,
-            status, assigned_to, authority_note, source, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            reporter_name, email, reporter_phone, category, description,
-            latitude, longitude, location_label, image_name, department, "Medium",
-            "Reported", "", "Complaint received by CivicSense.", source, now, now,
-        ),
-    )
-    issue_id = cursor.lastrowid
-    conn.execute(
-        "INSERT INTO status_history (issue_id, status, note, changed_at) VALUES (?, ?, ?, ?)",
-        (issue_id, "Reported", "Complaint submitted by citizen with map location and photo evidence.", now),
-    )
-    conn.commit()
-    row = conn.execute("SELECT * FROM issues WHERE id = ?", (issue_id,)).fetchone()
-    conn.close()
-    return {"message": "Issue reported successfully.", "issue": row_to_dict(row)}
+
+    issue_payload = {
+        "reporter_name": reporter_name,
+        "reporter_email": email,
+        "reporter_phone": reporter_phone,
+        "category": category,
+        "description": description,
+        "latitude": latitude,
+        "longitude": longitude,
+        "location_label": location_label,
+        "image_name": image_name,
+        "image_url": image_url,
+        "department": department,
+        "severity": "Medium",
+        "status": "Reported",
+        "assigned_to": "",
+        "authority_note": "Complaint received by CivicSense.",
+        "source": source,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    created_issue = database.create_issue(issue_payload)
+    return {"message": "Issue reported successfully.", "issue": created_issue}
 
 
 @app.get("/api/issues")
@@ -300,29 +212,12 @@ def get_issues(
     category: str | None = Query(default=None),
     department: str | None = Query(default=None),
 ):
-    conn = get_db()
-    query = "SELECT * FROM issues WHERE 1=1"
-    params = []
-    if status:
-        query += " AND status = ?"
-        params.append(status)
-    if category:
-        query += " AND category = ?"
-        params.append(category)
-    if department:
-        query += " AND department = ?"
-        params.append(department)
-    query += " ORDER BY id DESC"
-    rows = conn.execute(query, params).fetchall()
-    conn.close()
-    return [row_to_dict(row) for row in rows]
+    return database.get_issues(status=status, category=category, department=department)
 
 
 @app.get("/api/issues/export.csv")
 def export_issues_csv():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM issues ORDER BY id DESC").fetchall()
-    conn.close()
+    rows = database.get_issues()
 
     output = StringIO()
     writer = csv.writer(output)
@@ -349,24 +244,18 @@ def export_issues_csv():
 
 @app.get("/api/issues/{issue_id}")
 def get_issue(issue_id: int):
-    conn = get_db()
-    row = conn.execute("SELECT * FROM issues WHERE id = ?", (issue_id,)).fetchone()
-    conn.close()
+    row = database.get_issue(issue_id)
     if not row:
         raise HTTPException(status_code=404, detail="Complaint not found.")
-    return row_to_dict(row)
+    return row
 
 
 @app.get("/api/issues/{issue_id}/history")
 def get_issue_history(issue_id: int):
-    conn = get_db()
-    get_issue_row(conn, issue_id)
-    rows = conn.execute(
-        "SELECT status, note, changed_at FROM status_history WHERE issue_id = ? ORDER BY id ASC",
-        (issue_id,),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    row = database.get_issue(issue_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Complaint not found.")
+    return database.get_issue_history(issue_id)
 
 
 @app.get("/api/issues/{issue_id}/report.pdf")
@@ -378,13 +267,10 @@ def download_issue_report(issue_id: int):
     except ImportError as exc:
         raise HTTPException(status_code=500, detail="PDF support is not installed. Run: pip install reportlab") from exc
 
-    conn = get_db()
-    row = get_issue_row(conn, issue_id)
-    history = conn.execute(
-        "SELECT status, note, changed_at FROM status_history WHERE issue_id = ? ORDER BY id ASC",
-        (issue_id,),
-    ).fetchall()
-    conn.close()
+    row = database.get_issue(issue_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Complaint not found.")
+    history = database.get_issue_history(issue_id)
 
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -450,7 +336,7 @@ def download_issue_report(issue_id: int):
     line("Name", row["reporter_name"])
     line("Email", row["reporter_email"])
     line("Phone", row["reporter_phone"] or "Not provided")
-    line("Capture Source", row["source"] if "source" in row.keys() else "Citizen Web")
+    line("Capture Source", row.get("source", "Citizen Web"))
 
     section("Authority Update")
     line("Latest Note", row["authority_note"] or "No update yet", 70)
@@ -459,7 +345,7 @@ def download_issue_report(issue_id: int):
 
     section("Activity Timeline")
     for item in history:
-        line(item["status"], f"{item['changed_at']} - {item['note']}", 68)
+        line(item.get("status", ""), f"{item.get('changed_at', '')} - {item.get('note', '')}", 68)
 
     c.setFillColor(HexColor("#94A3B8"))
     c.setFont("Helvetica", 8)
@@ -527,39 +413,25 @@ def update_status(issue_id: int, data: StatusUpdate):
     if data.severity not in ALLOWED_SEVERITIES:
         raise HTTPException(status_code=400, detail="Invalid severity.")
 
-    conn = get_db()
-    get_issue_row(conn, issue_id)
+    existing = database.get_issue(issue_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Complaint not found.")
+
     now = datetime.now().isoformat(timespec="seconds")
     note = data.note.strip() or f"Status changed to {data.status}."
     assigned_to = data.assigned_to.strip()
-    conn.execute(
-        """
-        UPDATE issues
-        SET status = ?, severity = ?, assigned_to = ?, authority_note = ?, updated_at = ?
-        WHERE id = ?
-        """,
-        (data.status, data.severity, assigned_to, note, now, issue_id),
+
+    updated = database.update_issue_status(
+        issue_id=issue_id,
+        status=data.status,
+        severity=data.severity,
+        assigned_to=assigned_to,
+        note=note,
+        updated_at=now,
     )
-    conn.execute(
-        "INSERT INTO status_history (issue_id, status, note, changed_at) VALUES (?, ?, ?, ?)",
-        (issue_id, data.status, note, now),
-    )
-    conn.commit()
-    updated = conn.execute("SELECT * FROM issues WHERE id = ?", (issue_id,)).fetchone()
-    conn.close()
-    return {"message": "Complaint updated.", "issue": row_to_dict(updated)}
+    return {"message": "Complaint updated.", "issue": updated}
 
 
 @app.get("/api/dashboard/stats")
 def dashboard_stats():
-    conn = get_db()
-    total = conn.execute("SELECT COUNT(*) AS c FROM issues").fetchone()["c"]
-    rows = conn.execute("SELECT status, COUNT(*) AS c FROM issues GROUP BY status").fetchall()
-    priority = conn.execute("SELECT COUNT(*) AS c FROM issues WHERE severity IN ('High','Critical') AND status != 'Resolved'").fetchone()["c"]
-    by_status = {status: 0 for status in ALLOWED_STATUSES}
-    for row in rows:
-        by_status[row["status"]] = row["c"]
-    conn.close()
-    resolved = by_status["Resolved"]
-    resolution_rate = round((resolved / total) * 100) if total else 0
-    return {"total": total, "by_status": by_status, "priority_open": priority, "resolution_rate": resolution_rate}
+    return database.get_dashboard_stats(ALLOWED_STATUSES)
