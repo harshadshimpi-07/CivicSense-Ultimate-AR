@@ -9,6 +9,8 @@ import csv
 import math
 import textwrap
 
+from fastapi.middleware.cors import CORSMiddleware
+
 import database
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -35,6 +37,14 @@ app = FastAPI(
     title="CivicSense - Smart Civic Issue Reporting",
     version="4.0.0",
     description="Map + AR civic reporting, Supabase cloud database support, duplicate prevention, municipal workflow, big-data demo and citizen tracking.",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
